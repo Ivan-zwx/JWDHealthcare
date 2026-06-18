@@ -22,24 +22,36 @@ declare @PasswordHash nvarchar(300) = N'$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.H
 
 if not exists (select 1 from [UserAccount] where [Username] = N'admin')
 begin
-    insert into [UserAccount] ([FullName], [Email], [Username], [PasswordHash], [Role], [Enabled])
-    values (N'Admin User', N'admin@healthcare.local', N'admin', @PasswordHash, N'ADMIN', 1)
+insert into [UserAccount] ([FullName], [Email], [Username], [PasswordHash], [Role], [Enabled])
+values (N'Admin User', N'admin@healthcare.local', N'admin', @PasswordHash, N'ADMIN', 1)
 end
 
 if not exists (select 1 from [UserAccount] where [Username] = N'doctor')
 begin
-    insert into [UserAccount] ([FullName], [Email], [Username], [PasswordHash], [Role], [Enabled])
-    values (N'Dr. Alice Morgan', N'doctor@healthcare.local', N'doctor', @PasswordHash, N'DOCTOR', 1)
+insert into [UserAccount] ([FullName], [Email], [Username], [PasswordHash], [Role], [Enabled])
+values (N'Dr. Alice Morgan', N'doctor@healthcare.local', N'doctor', @PasswordHash, N'DOCTOR', 1)
+end
+
+if not exists (select 1 from [UserAccount] where [Username] = N'doctor2')
+begin
+insert into [UserAccount] ([FullName], [Email], [Username], [PasswordHash], [Role], [Enabled])
+values (N'Dr. Benjamin Carter', N'doctor2@healthcare.local', N'doctor2', @PasswordHash, N'DOCTOR', 1)
 end
 
 if not exists (select 1 from [UserAccount] where [Username] = N'patient')
 begin
-    insert into [UserAccount] ([FullName], [Email], [Username], [PasswordHash], [Role], [Enabled])
-    values (N'John Patient', N'patient@healthcare.local', N'patient', @PasswordHash, N'PATIENT', 1)
+insert into [UserAccount] ([FullName], [Email], [Username], [PasswordHash], [Role], [Enabled])
+values (N'John Patient', N'patient@healthcare.local', N'patient', @PasswordHash, N'PATIENT', 1)
+end
+
+if not exists (select 1 from [UserAccount] where [Username] = N'patient2')
+begin
+insert into [UserAccount] ([FullName], [Email], [Username], [PasswordHash], [Role], [Enabled])
+values (N'Mary Patient', N'patient2@healthcare.local', N'patient2', @PasswordHash, N'PATIENT', 1)
 end
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------
--- Doctor profile
+-- Doctor profiles
 ----------------------------------------------------------------------------------------------------------------------------------------------------------
 
 declare @DoctorUserAccountID int =
@@ -52,12 +64,26 @@ declare @DoctorUserAccountID int =
 if @DoctorUserAccountID is not null
    and not exists (select 1 from [Doctor] where [UserAccountID] = @DoctorUserAccountID)
 begin
-    insert into [Doctor] ([UserAccountID], [Specialty])
-    values (@DoctorUserAccountID, N'General Medicine')
+insert into [Doctor] ([UserAccountID], [Specialty])
+values (@DoctorUserAccountID, N'General Medicine')
+end
+
+declare @Doctor2UserAccountID int =
+(
+    select [IDUserAccount]
+    from [UserAccount]
+    where [Username] = N'doctor2'
+)
+
+if @Doctor2UserAccountID is not null
+   and not exists (select 1 from [Doctor] where [UserAccountID] = @Doctor2UserAccountID)
+begin
+insert into [Doctor] ([UserAccountID], [Specialty])
+values (@Doctor2UserAccountID, N'Cardiology')
 end
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------
--- Patient profile
+-- Patient profiles
 ----------------------------------------------------------------------------------------------------------------------------------------------------------
 
 declare @PatientUserAccountID int =
@@ -70,8 +96,22 @@ declare @PatientUserAccountID int =
 if @PatientUserAccountID is not null
    and not exists (select 1 from [Patient] where [UserAccountID] = @PatientUserAccountID)
 begin
-    insert into [Patient] ([UserAccountID], [Address], [Phone])
-    values (@PatientUserAccountID, N'Example Street 1', N'+385 91 000 0000')
+insert into [Patient] ([UserAccountID], [Address], [Phone])
+values (@PatientUserAccountID, N'Example Street 1', N'+385 91 000 0000')
+end
+
+declare @Patient2UserAccountID int =
+(
+    select [IDUserAccount]
+    from [UserAccount]
+    where [Username] = N'patient2'
+)
+
+if @Patient2UserAccountID is not null
+   and not exists (select 1 from [Patient] where [UserAccountID] = @Patient2UserAccountID)
+begin
+insert into [Patient] ([UserAccountID], [Address], [Phone])
+values (@Patient2UserAccountID, N'Example Street 2', N'+385 91 000 0001')
 end
 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(#{appointments.list.pageTitle})}"></head>
+<body>
+
+<div th:replace="~{fragments/navbar :: navbar}"></div>
+
+<main class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1" th:text="#{appointments.list.heading}">
+                Appointments
+            </h1>
+            <p class="text-muted mb-0" th:text="#{appointments.list.description}">
+                Review, create, update, and cancel scheduled appointments.
+            </p>
+        </div>
+
+        <a class="btn btn-primary" th:href="@{/admin/appointments/create}" th:text="#{appointments.action.create}">
+            Create appointment
+        </a>
+    </div>
+
+    <div th:if="${successMessageKey}" class="alert alert-success" th:text="#{${successMessageKey}}">
+        Operation completed successfully.
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div th:if="${#lists.isEmpty(appointments)}" class="text-muted" th:text="#{appointments.list.empty}">
+                No appointments have been created yet.
+            </div>
+
+            <div th:unless="${#lists.isEmpty(appointments)}" class="table-responsive">
+                <table class="table table-striped align-middle">
+                    <thead>
+                    <tr>
+                        <th th:text="#{appointments.field.id}">ID</th>
+                        <th th:text="#{appointments.field.doctor}">Doctor</th>
+                        <th th:text="#{appointments.field.patient}">Patient</th>
+                        <th th:text="#{appointments.field.scheduledAt}">Scheduled at</th>
+                        <th th:text="#{appointments.field.status}">Status</th>
+                        <th th:text="#{appointments.field.reason}">Reason</th>
+                        <th th:text="#{appointments.field.reminderGeneratedAt}">Reminder</th>
+                        <th class="text-end" th:text="#{appointments.field.actions}">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="appointment : ${appointments}">
+                        <td th:text="${appointment.idAppointment}">1</td>
+                        <td th:text="${appointment.doctorName}">Doctor Name</td>
+                        <td th:text="${appointment.patientName}">Patient Name</td>
+                        <td th:text="${#temporals.format(appointment.scheduledAt, 'yyyy-MM-dd HH:mm')}">
+                            2026-06-12 10:00
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary"
+                                  th:text="#{appointment.status.__${appointment.status.name()}__}">
+                                SCHEDULED
+                            </span>
+                        </td>
+                        <td th:text="${appointment.reason} ?: #{appointments.value.noReason}">
+                            General consultation
+                        </td>
+                        <td th:text="${appointment.reminderGeneratedAt == null ? #messages.msg('appointments.value.notGenerated') : #temporals.format(appointment.reminderGeneratedAt, 'yyyy-MM-dd HH:mm')}">
+                            Not generated
+                        </td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary"
+                               th:href="@{/admin/appointments/edit/{id}(id=${appointment.idAppointment})}"
+                               th:text="#{appointments.action.edit}">
+                                Edit
+                            </a>
+
+                            <form class="d-inline"
+                                  th:if="${appointment.cancellable}"
+                                  th:action="@{/admin/appointments/cancel/{id}(id=${appointment.idAppointment})}"
+                                  method="post">
+                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        th:text="#{appointments.action.cancel}">
+                                    Cancel
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
