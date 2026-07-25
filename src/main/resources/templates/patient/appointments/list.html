@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html th:lang="${#locale.language}" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(#{patient.appointments.list.pageTitle})}"></head>
+<body>
+
+<div th:replace="~{fragments/navbar :: navbar}"></div>
+
+<main class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-1" th:text="#{patient.appointments.list.heading}">
+                My appointments
+            </h1>
+            <p class="text-muted mb-0" th:text="#{patient.appointments.list.description}">
+                View your scheduled healthcare appointments.
+            </p>
+        </div>
+
+        <a class="btn btn-primary" th:href="@{/patient/appointments/create}"
+           th:text="#{patient.appointments.action.book}">
+            Book appointment
+        </a>
+    </div>
+
+    <div th:if="${successMessageKey}" class="alert alert-success" th:text="#{${successMessageKey}}">
+        Appointment was booked successfully.
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div th:if="${#lists.isEmpty(appointments)}" class="text-muted"
+                 th:text="#{patient.appointments.list.empty}">
+                You do not have any appointments yet.
+            </div>
+
+            <div th:unless="${#lists.isEmpty(appointments)}" class="table-responsive">
+                <table class="table table-striped align-middle">
+                    <thead>
+                    <tr>
+                        <th th:text="#{appointments.field.id}">ID</th>
+                        <th th:text="#{appointments.field.doctor}">Doctor</th>
+                        <th th:text="#{patient.appointments.field.specialty}">Specialty</th>
+                        <th th:text="#{appointments.field.scheduledAt}">Scheduled at</th>
+                        <th th:text="#{appointments.field.status}">Status</th>
+                        <th th:text="#{appointments.field.reason}">Reason</th>
+                        <th th:text="#{appointments.field.reminderGeneratedAt}">Reminder</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="appointment : ${appointments}">
+                        <td th:text="${appointment.idAppointment}">1</td>
+                        <td th:text="${appointment.doctorName}">Doctor Name</td>
+                        <td th:text="${appointment.doctorSpecialty}">General Medicine</td>
+                        <td th:text="${#temporals.format(appointment.scheduledAt, 'yyyy-MM-dd HH:mm')}">
+                            2026-06-12 10:00
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary"
+                                  th:text="#{appointment.status.__${appointment.status.name()}__}">
+                                SCHEDULED
+                            </span>
+                        </td>
+                        <td th:text="${appointment.reason} ?: #{appointments.value.noReason}">
+                            General consultation
+                        </td>
+                        <td th:text="${appointment.reminderGeneratedAt == null ? #messages.msg('appointments.value.notGenerated') : #temporals.format(appointment.reminderGeneratedAt, 'yyyy-MM-dd HH:mm')}">
+                            Not generated
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+
+<div th:replace="~{fragments/footer :: footer}"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

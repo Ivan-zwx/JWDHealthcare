@@ -49,6 +49,23 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Intege
     Optional<Appointment> findByIdForAdmin(@Param("idAppointment") Integer idAppointment);
 
     /**
+     * Finds all appointments for a patient with data needed for patient display.
+     *
+     * @param patientId the patient identifier
+     * @return patient appointments ordered by scheduled time
+     */
+    @Query("""
+            select a
+            from Appointment a
+            join fetch a.doctor d
+            join fetch d.userAccount
+            join a.patient p
+            where p.idPatient = :patientId
+            order by a.scheduledAt asc
+            """)
+    List<Appointment> findAllForPatientView(@Param("patientId") Integer patientId);
+
+    /**
      * Checks whether a doctor already has an active appointment in the selected time slot.
      *
      * @param doctorId the doctor identifier

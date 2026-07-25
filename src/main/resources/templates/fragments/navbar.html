@@ -73,6 +73,27 @@
             </ul>
         </div>
     </div>
+
+    <div class="navbar navbar-expand navbar-light bg-light border-bottom" th:if="${currentUserPatient}">
+        <div class="container">
+            <span class="navbar-text me-3 fw-semibold" th:text="#{nav.patientArea}">
+                Patient
+            </span>
+
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" th:href="@{/patient/appointments}" th:text="#{nav.myAppointments}">
+                        My appointments
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" th:href="@{/patient/appointments/create}" th:text="#{nav.bookAppointment}">
+                        Book appointment
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
 </nav>
 </body>
 </html>

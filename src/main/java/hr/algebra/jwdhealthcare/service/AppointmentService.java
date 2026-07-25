@@ -5,8 +5,10 @@ import hr.algebra.jwdhealthcare.domain.AppointmentStatus;
 import hr.algebra.jwdhealthcare.domain.Doctor;
 import hr.algebra.jwdhealthcare.domain.Patient;
 import hr.algebra.jwdhealthcare.dto.form.AppointmentFormDto;
+import hr.algebra.jwdhealthcare.dto.form.PatientAppointmentFormDto;
 import hr.algebra.jwdhealthcare.dto.view.AppointmentViewDto;
 import hr.algebra.jwdhealthcare.dto.view.DoctorOptionDto;
+import hr.algebra.jwdhealthcare.dto.view.PatientAppointmentViewDto;
 import hr.algebra.jwdhealthcare.dto.view.PatientOptionDto;
 import hr.algebra.jwdhealthcare.exception.AppointmentSchedulingException;
 import hr.algebra.jwdhealthcare.repository.AppointmentRepository;
@@ -43,12 +45,28 @@ public class AppointmentService {
     public List<AppointmentViewDto> findAllForAdminView() {
         return appointmentRepository.findAllForAdminList()
                 .stream()
-                .map(this::toViewDto)
+                .map(this::toAdminViewDto)
                 .toList();
     }
 
     /**
-     * Creates a new appointment form with default values.
+     * Finds all appointments for the authenticated patient.
+     *
+     * @param username the authenticated username
+     * @return patient appointment view data
+     */
+    @Transactional(readOnly = true)
+    public List<PatientAppointmentViewDto> findAllForPatientView(String username) {
+        Patient patient = findPatientByUsername(username);
+
+        return appointmentRepository.findAllForPatientView(patient.getIdPatient())
+                .stream()
+                .map(this::toPatientViewDto)
+                .toList();
+    }
+
+    /**
+     * Creates a new administrator appointment form with default values.
      *
      * @return a form prepared for appointment creation
      */
@@ -60,7 +78,18 @@ public class AppointmentService {
     }
 
     /**
-     * Finds an appointment and converts it into editable form data.
+     * Creates a new patient appointment booking form with default values.
+     *
+     * @return a form prepared for patient appointment booking
+     */
+    public PatientAppointmentFormDto createEmptyPatientForm() {
+        PatientAppointmentFormDto patientAppointmentFormDto = new PatientAppointmentFormDto();
+        patientAppointmentFormDto.setScheduledAt(createDefaultScheduledAt());
+        return patientAppointmentFormDto;
+    }
+
+    /**
+     * Finds an appointment and converts it into editable administrator form data.
      *
      * @param idAppointment the appointment identifier
      * @return form data for the requested appointment
@@ -81,13 +110,20 @@ public class AppointmentService {
     }
 
     /**
-     * Creates an appointment from submitted form data.
+     * Creates an appointment from submitted administrator form data.
      *
      * @param appointmentFormDto the submitted appointment form data
      */
     @Transactional
     public void create(AppointmentFormDto appointmentFormDto) {
-        validateSchedulingRules(appointmentFormDto, null);
+        validateSchedulingRules(
+                appointmentFormDto.getDoctorId(),
+                appointmentFormDto.getPatientId(),
+                appointmentFormDto.getScheduledAt(),
+                appointmentFormDto.getStatus(),
+                null,
+                "patientId"
+        );
 
         Doctor doctor = findDoctor(appointmentFormDto.getDoctorId());
         Patient patient = findPatient(appointmentFormDto.getPatientId());
@@ -106,14 +142,55 @@ public class AppointmentService {
     }
 
     /**
-     * Updates an existing appointment from submitted form data.
+     * Creates an appointment for the authenticated patient.
+     *
+     * @param username the authenticated username
+     * @param patientAppointmentFormDto the submitted patient appointment form data
+     */
+    @Transactional
+    public void createForPatient(String username, PatientAppointmentFormDto patientAppointmentFormDto) {
+        Patient patient = findPatientByUsername(username);
+
+        validateSchedulingRules(
+                patientAppointmentFormDto.getDoctorId(),
+                patient.getIdPatient(),
+                patientAppointmentFormDto.getScheduledAt(),
+                AppointmentStatus.SCHEDULED,
+                null,
+                "scheduledAt"
+        );
+
+        Doctor doctor = findDoctor(patientAppointmentFormDto.getDoctorId());
+        LocalDateTime scheduledAt = normalizeScheduledAt(patientAppointmentFormDto.getScheduledAt());
+
+        Appointment appointment = new Appointment();
+        appointment.setDoctor(doctor);
+        appointment.setPatient(patient);
+        appointment.setReason(normalizeText(patientAppointmentFormDto.getReason()));
+        appointment.setCreatedAt(LocalDateTime.now().withNano(0));
+        appointment.setScheduledAt(scheduledAt);
+        appointment.setStatus(AppointmentStatus.SCHEDULED);
+        appointment.setReminderGeneratedAt(null);
+
+        appointmentRepository.save(appointment);
+    }
+
+    /**
+     * Updates an existing appointment from submitted administrator form data.
      *
      * @param idAppointment the appointment identifier
      * @param appointmentFormDto the submitted appointment form data
      */
     @Transactional
     public void update(Integer idAppointment, AppointmentFormDto appointmentFormDto) {
-        validateSchedulingRules(appointmentFormDto, idAppointment);
+        validateSchedulingRules(
+                appointmentFormDto.getDoctorId(),
+                appointmentFormDto.getPatientId(),
+                appointmentFormDto.getScheduledAt(),
+                appointmentFormDto.getStatus(),
+                idAppointment,
+                "patientId"
+        );
 
         Appointment appointment = appointmentRepository.findById(idAppointment)
                 .orElseThrow(() -> new IllegalArgumentException("Appointment was not found."));
@@ -165,7 +242,7 @@ public class AppointmentService {
     }
 
     /**
-     * Finds patient options for appointment forms.
+     * Finds patient options for administrator appointment forms.
      *
      * @return patient dropdown options
      */
@@ -181,7 +258,7 @@ public class AppointmentService {
     }
 
     /**
-     * Finds appointment statuses for appointment forms.
+     * Finds appointment statuses for administrator appointment forms.
      *
      * @return available appointment statuses
      */
@@ -189,36 +266,41 @@ public class AppointmentService {
         return Arrays.asList(AppointmentStatus.values());
     }
 
-    private void validateSchedulingRules(AppointmentFormDto appointmentFormDto, Integer excludedAppointmentId) {
-        if (appointmentFormDto.getDoctorId() == null
-                || appointmentFormDto.getPatientId() == null
-                || appointmentFormDto.getScheduledAt() == null) {
+    private void validateSchedulingRules(
+            Integer doctorId,
+            Integer patientId,
+            LocalDateTime scheduledAt,
+            AppointmentStatus status,
+            Integer excludedAppointmentId,
+            String patientConflictFieldName
+    ) {
+        if (doctorId == null || patientId == null || scheduledAt == null) {
             return;
         }
 
-        LocalDateTime scheduledAt = normalizeScheduledAt(appointmentFormDto.getScheduledAt());
+        LocalDateTime normalizedScheduledAt = normalizeScheduledAt(scheduledAt);
 
-        if (!isAlignedToAppointmentSlot(scheduledAt)) {
+        if (!isAlignedToAppointmentSlot(normalizedScheduledAt)) {
             throw new AppointmentSchedulingException(
                     "scheduledAt",
                     "validation.appointment.scheduledAt.slot"
             );
         }
 
-        if (appointmentFormDto.getStatus() == AppointmentStatus.CANCELLED) {
+        if (status == null || status == AppointmentStatus.CANCELLED) {
             return;
         }
 
-        if (doctorConflictExists(appointmentFormDto.getDoctorId(), scheduledAt, excludedAppointmentId)) {
+        if (doctorConflictExists(doctorId, normalizedScheduledAt, excludedAppointmentId)) {
             throw new AppointmentSchedulingException(
                     "doctorId",
                     "validation.appointment.doctor.conflict"
             );
         }
 
-        if (patientConflictExists(appointmentFormDto.getPatientId(), scheduledAt, excludedAppointmentId)) {
+        if (patientConflictExists(patientId, normalizedScheduledAt, excludedAppointmentId)) {
             throw new AppointmentSchedulingException(
-                    "patientId",
+                    patientConflictFieldName,
                     "validation.appointment.patient.conflict"
             );
         }
@@ -296,11 +378,29 @@ public class AppointmentService {
                 .orElseThrow(() -> new IllegalArgumentException("Patient was not found."));
     }
 
-    private AppointmentViewDto toViewDto(Appointment appointment) {
+    private Patient findPatientByUsername(String username) {
+        return patientRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("Patient profile was not found."));
+    }
+
+    private AppointmentViewDto toAdminViewDto(Appointment appointment) {
         return new AppointmentViewDto(
                 appointment.getIdAppointment(),
                 appointment.getDoctor().getUserAccount().getFullName(),
                 appointment.getPatient().getUserAccount().getFullName(),
+                appointment.getReason(),
+                appointment.getCreatedAt(),
+                appointment.getScheduledAt(),
+                appointment.getStatus(),
+                appointment.getReminderGeneratedAt()
+        );
+    }
+
+    private PatientAppointmentViewDto toPatientViewDto(Appointment appointment) {
+        return new PatientAppointmentViewDto(
+                appointment.getIdAppointment(),
+                appointment.getDoctor().getUserAccount().getFullName(),
+                appointment.getDoctor().getSpecialty(),
                 appointment.getReason(),
                 appointment.getCreatedAt(),
                 appointment.getScheduledAt(),
