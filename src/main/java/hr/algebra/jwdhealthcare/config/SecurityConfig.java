@@ -2,20 +2,19 @@ package hr.algebra.jwdhealthcare.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * Web security rules are configured for MVC and development endpoints.
+ * Web security rules are configured for MVC, API, and development endpoints.
  */
 @Configuration
 public class SecurityConfig {
 
     /**
-     * Configures route authorization and form-based login.
+     * Configures route authorization, form login, and logout behavior.
      *
      * @param http the HTTP security builder
      * @return the configured security filter chain
@@ -25,15 +24,25 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/", "/css/**", "/error").permitAll()
+                        .requestMatchers("/", "/login", "/css/**", "/error").permitAll()
                         .requestMatchers("/admin/**", "/dev/**").hasRole("ADMIN")
                         .requestMatchers("/doctor/**").hasRole("DOCTOR")
                         .requestMatchers("/patient/**").hasRole("PATIENT")
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().authenticated()
                 )
-                .formLogin(Customizer.withDefaults())
-                .logout(Customizer.withDefaults())
+                .formLogin(form -> form
+                        .loginPage("/login")
+                        .loginProcessingUrl("/login")
+                        .defaultSuccessUrl("/", false)
+                        .failureUrl("/login?error")
+                        .permitAll()
+                )
+                .logout(logout -> logout
+                        .logoutUrl("/logout")
+                        .logoutSuccessUrl("/login?logout")
+                        .permitAll()
+                )
                 .build();
     }
 
