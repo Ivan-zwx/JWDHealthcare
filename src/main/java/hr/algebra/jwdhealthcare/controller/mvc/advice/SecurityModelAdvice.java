@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 /**
  * Security-related model attributes are added for MVC views.
  */
-@ControllerAdvice(basePackages = "hr.algebra.jwdhealthcare.controller.mvc")
+@ControllerAdvice
 public class SecurityModelAdvice {
 
     /**
