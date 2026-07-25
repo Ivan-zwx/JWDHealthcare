@@ -74,6 +74,22 @@
         </div>
     </div>
 
+    <div class="navbar navbar-expand navbar-light bg-light border-bottom" th:if="${currentUserDoctor}">
+        <div class="container">
+            <span class="navbar-text me-3 fw-semibold" th:text="#{nav.doctorArea}">
+                Doctor
+            </span>
+
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" th:href="@{/doctor/schedule}" th:text="#{nav.schedule}">
+                        Schedule
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
     <div class="navbar navbar-expand navbar-light bg-light border-bottom" th:if="${currentUserPatient}">
         <div class="container">
             <span class="navbar-text me-3 fw-semibold" th:text="#{nav.patientArea}">
