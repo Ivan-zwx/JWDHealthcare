@@ -193,4 +193,54 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Intege
             @Param("excludedAppointmentId") Integer excludedAppointmentId,
             @Param("cancelledStatus") AppointmentStatus cancelledStatus
     );
+
+    /**
+     * Finds upcoming appointments that need patient reminders generated.
+     *
+     * @param now the lower scheduling boundary
+     * @param reminderUntil the upper scheduling boundary
+     * @param scheduledStatus the appointment status eligible for reminders
+     * @return appointments that should receive reminders
+     */
+    @Query("""
+        select a
+        from Appointment a
+        join fetch a.doctor d
+        join fetch d.userAccount
+        join fetch a.patient p
+        join fetch p.userAccount
+        where a.status = :scheduledStatus
+          and a.reminderGeneratedAt is null
+          and a.scheduledAt > :now
+          and a.scheduledAt <= :reminderUntil
+        order by a.scheduledAt asc
+        """)
+    List<Appointment> findUpcomingAppointmentsNeedingReminder(
+            @Param("now") LocalDateTime now,
+            @Param("reminderUntil") LocalDateTime reminderUntil,
+            @Param("scheduledStatus") AppointmentStatus scheduledStatus
+    );
+
+    /**
+     * Finds generated reminders for a patient.
+     *
+     * @param patientId the patient identifier
+     * @param scheduledStatus the appointment status shown as an active reminder
+     * @return patient reminders ordered by scheduled appointment time
+     */
+    @Query("""
+        select a
+        from Appointment a
+        join fetch a.doctor d
+        join fetch d.userAccount
+        join a.patient p
+        where p.idPatient = :patientId
+          and a.status = :scheduledStatus
+          and a.reminderGeneratedAt is not null
+        order by a.scheduledAt asc
+        """)
+    List<Appointment> findGeneratedRemindersForPatient(
+            @Param("patientId") Integer patientId,
+            @Param("scheduledStatus") AppointmentStatus scheduledStatus
+    );
 }
