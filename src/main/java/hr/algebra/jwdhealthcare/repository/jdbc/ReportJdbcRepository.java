@@ -159,6 +159,38 @@ public class ReportJdbcRepository {
     }
 
     /**
+     * Checks whether a report with the selected title already exists in a generation time range.
+     *
+     * @param title the report title
+     * @param fromDateTime the lower generation boundary
+     * @param toDateTime the upper generation boundary
+     * @return true if the report already exists
+     */
+    public boolean reportExistsByTitleAndGeneratedAtBetween(
+            String title,
+            LocalDateTime fromDateTime,
+            LocalDateTime toDateTime
+    ) {
+        String sql = """
+                select count(*)
+                from [Report]
+                where [Title] = ?
+                  and [GeneratedAt] >= ?
+                  and [GeneratedAt] < ?
+                """;
+
+        Integer value = jdbcTemplate.queryForObject(
+                sql,
+                Integer.class,
+                title,
+                fromDateTime,
+                toDateTime
+        );
+
+        return value != null && value > 0;
+    }
+
+    /**
      * Inserts a generated report.
      *
      * @param title the report title

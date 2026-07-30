@@ -9,18 +9,23 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
- * Administrator report operations are coordinated between MVC controllers and JdbcTemplate repositories.
+ * Administrator report operations are coordinated between MVC controllers, scheduled jobs, and JdbcTemplate repositories.
  */
 @Service
 @RequiredArgsConstructor
 public class AdminReportService {
 
     private static final int UPCOMING_REPORT_DAYS = 7;
+    private static final String MANUAL_REPORT_TITLE = "Appointment Summary Report";
+    private static final String SCHEDULED_REPORT_TITLE = "Scheduled Appointment Summary Report";
+    private static final String MANUAL_REPORT_SOURCE = "Manual";
+    private static final String SCHEDULED_REPORT_SOURCE = "Scheduled";
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
     private final ReportJdbcRepository reportJdbcRepository;
@@ -36,10 +41,40 @@ public class AdminReportService {
     }
 
     /**
-     * Generates and stores an appointment summary report.
+     * Generates and stores a manually requested appointment summary report.
      */
     @Transactional
     public void generateAppointmentSummaryReport() {
+        generateAppointmentSummaryReport(MANUAL_REPORT_TITLE, MANUAL_REPORT_SOURCE);
+    }
+
+    /**
+     * Generates and stores one scheduled appointment summary report per day.
+     *
+     * @return true if a scheduled report was generated
+     */
+    @Transactional
+    public boolean generateScheduledAppointmentSummaryReportIfNeeded() {
+        LocalDate today = LocalDate.now();
+        LocalDateTime dayStart = today.atStartOfDay();
+        LocalDateTime nextDayStart = today.plusDays(1).atStartOfDay();
+
+        boolean reportAlreadyExists = reportJdbcRepository.reportExistsByTitleAndGeneratedAtBetween(
+                SCHEDULED_REPORT_TITLE,
+                dayStart,
+                nextDayStart
+        );
+
+        if (reportAlreadyExists) {
+            return false;
+        }
+
+        generateAppointmentSummaryReport(SCHEDULED_REPORT_TITLE, SCHEDULED_REPORT_SOURCE);
+
+        return true;
+    }
+
+    private void generateAppointmentSummaryReport(String title, String reportSource) {
         LocalDateTime generatedAt = LocalDateTime.now().withNano(0);
         LocalDateTime upcomingFrom = generatedAt;
         LocalDateTime upcomingTo = generatedAt.plusDays(UPCOMING_REPORT_DAYS);
@@ -51,8 +86,9 @@ public class AdminReportService {
                 upcomingTo
         );
 
-        String title = "Appointment Summary Report";
         String summary = buildAppointmentSummaryReport(
+                title,
+                reportSource,
                 generatedAt,
                 statusRows,
                 doctorRows,
@@ -63,6 +99,8 @@ public class AdminReportService {
     }
 
     private String buildAppointmentSummaryReport(
+            String title,
+            String reportSource,
             LocalDateTime generatedAt,
             List<AppointmentStatusReportRowDto> statusRows,
             List<DoctorAppointmentReportRowDto> doctorRows,
@@ -70,7 +108,10 @@ public class AdminReportService {
     ) {
         StringBuilder builder = new StringBuilder();
 
-        builder.append("Healthcare Appointment Summary").append(System.lineSeparator());
+        builder.append(title).append(System.lineSeparator());
+        builder.append("Report source: ")
+                .append(reportSource)
+                .append(System.lineSeparator());
         builder.append("Generated at: ")
                 .append(generatedAt.format(DATE_TIME_FORMATTER))
                 .append(System.lineSeparator())
