@@ -1,0 +1,88 @@
+### API login as admin
+POST http://localhost:8082/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "password"
+}
+
+> {% client.global.set("auth_token", response.body.token); %}
+
+
+### API current user with saved token
+GET http://localhost:8082/api/auth/me
+Authorization: Bearer {{auth_token}}
+
+
+### Admin status with admin token
+GET http://localhost:8082/api/admin/status
+Authorization: Bearer {{auth_token}}
+
+
+### Doctor status with admin token - should be 403
+GET http://localhost:8082/api/doctor/status
+Authorization: Bearer {{auth_token}}
+
+
+### Patient status with admin token - should be 403
+GET http://localhost:8082/api/patient/status
+Authorization: Bearer {{auth_token}}
+
+
+### API login as doctor
+POST http://localhost:8082/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "doctor",
+  "password": "password"
+}
+
+> {% client.global.set("doctor_token", response.body.token); %}
+
+
+### Doctor status with doctor token
+GET http://localhost:8082/api/doctor/status
+Authorization: Bearer {{doctor_token}}
+
+
+### Admin status with doctor token - should be 403
+GET http://localhost:8082/api/admin/status
+Authorization: Bearer {{doctor_token}}
+
+
+### API login as patient
+POST http://localhost:8082/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "patient",
+  "password": "password"
+}
+
+> {% client.global.set("patient_token", response.body.token); %}
+
+
+### Patient status with patient token
+GET http://localhost:8082/api/patient/status
+Authorization: Bearer {{patient_token}}
+
+
+### Admin status with patient token - should be 403
+GET http://localhost:8082/api/admin/status
+Authorization: Bearer {{patient_token}}
+
+
+### Missing token - should be 401
+GET http://localhost:8082/api/auth/me
+
+
+### Bad credentials - should be 401
+POST http://localhost:8082/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "wrong"
+}
