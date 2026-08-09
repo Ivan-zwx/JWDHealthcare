@@ -1,0 +1,29 @@
+### Login as doctor
+POST http://localhost:8082/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "doctor",
+  "password": "password"
+}
+
+> {% client.global.set("doctor_token", response.body.token); %}
+
+
+### Doctor schedule
+GET http://localhost:8082/api/doctor/schedule
+Authorization: Bearer {{doctor_token}}
+
+
+### Doctor cannot access patient appointments - should be 403
+GET http://localhost:8082/api/patient/appointments
+Authorization: Bearer {{doctor_token}}
+
+
+### Doctor cannot access admin reports - should be 403
+GET http://localhost:8082/api/admin/reports
+Authorization: Bearer {{doctor_token}}
+
+
+### Missing token - should be 401
+GET http://localhost:8082/api/doctor/schedule
