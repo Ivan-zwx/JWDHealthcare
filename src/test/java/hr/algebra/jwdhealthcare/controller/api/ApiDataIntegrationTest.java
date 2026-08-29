@@ -10,7 +10,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest(properties = {
@@ -18,79 +17,44 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "app.reports.scheduler.initial-delay-ms=3600000"
 })
 @AutoConfigureMockMvc
-class ApiSecurityIntegrationTest {
+class ApiDataIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @Test
-    void loginWithValidAdminCredentialsReturnsToken() throws Exception {
-        mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "username": "admin",
-                                  "password": "password"
-                                }
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").exists())
-                .andExpect(jsonPath("$.tokenType").value("Bearer"))
-                .andExpect(jsonPath("$.username").value("admin"))
-                .andExpect(jsonPath("$.role").value("ADMIN"));
-    }
-
-    @Test
-    void loginWithInvalidCredentialsReturnsUnauthorized() throws Exception {
-        mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "username": "admin",
-                                  "password": "wrong"
-                                }
-                                """))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message").value("Invalid username or password."));
-    }
-
-    @Test
-    void currentUserWithoutTokenReturnsUnauthorized() throws Exception {
-        mockMvc.perform(get("/api/auth/me"))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    void adminTokenCanAccessAdminStatus() throws Exception {
-        String token = loginAndGetToken("admin", "password");
-
-        mockMvc.perform(get("/api/admin/status")
-                        .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.area").value("admin"))
-                .andExpect(jsonPath("$.username").value("admin"));
-    }
-
-    @Test
-    void patientTokenCannotAccessAdminStatus() throws Exception {
+    void patientTokenCanReadPatientAppointmentsAndReminders() throws Exception {
         String token = loginAndGetToken("patient", "password");
 
-        mockMvc.perform(get("/api/admin/status")
+        mockMvc.perform(get("/api/patient/appointments")
                         .header("Authorization", "Bearer " + token))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/patient/reminders")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
     }
 
     @Test
-    void currentUserWithValidTokenReturnsUserIdentity() throws Exception {
+    void doctorTokenCanReadDoctorSchedule() throws Exception {
+        String token = loginAndGetToken("doctor", "password");
+
+        mockMvc.perform(get("/api/doctor/schedule")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void adminTokenCanReadUsersAndReports() throws Exception {
         String token = loginAndGetToken("admin", "password");
 
-        mockMvc.perform(get("/api/auth/me")
+        mockMvc.perform(get("/api/admin/users")
                         .header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.username").value("admin"))
-                .andExpect(jsonPath("$.role").value("ADMIN"))
-                .andExpect(jsonPath("$.authorities").isArray())
-                .andExpect(jsonPath("$.authorities[?(@ == 'ROLE_ADMIN')]").exists());
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/admin/reports")
+                        .header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk());
     }
 
     private String loginAndGetToken(String username, String password) throws Exception {
